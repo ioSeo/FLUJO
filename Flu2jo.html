@@ -1,0 +1,861 @@
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Centro de Operaciones</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #f3f4f6;
+            }
+            .table-container {
+                overflow-x: auto;
+                border-radius: 0.5rem;
+            }
+            th, td {
+                padding: 12px 16px;
+                text-align: left;
+                border-bottom: 1px solid #e5e7eb;
+                vertical-align: top;
+            }
+            th {
+                background-color: #e5e7eb;
+            }
+            tr:nth-child(even) {
+                background-color: #f9fafb;
+            }
+            .user-id-text {
+                word-break: break-all;
+            }
+            .emergency {
+                background-color: #fee2e2 !important;
+            }
+            /* Estilos para el modal personalizado */
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 100;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0,0,0,0.4);
+                justify-content: center;
+                align-items: center;
+            }
+            .modal-content {
+                background-color: #fff;
+                margin: auto;
+                padding: 20px;
+                border-radius: 0.5rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                width: 90%;
+                max-width: 400px;
+                text-align: center;
+            }
+            /* Estilos para hacer el formulario fijo */
+            .fixed-form-container {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                background-color: #f3f4f6;
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+            .main-container {
+                margin-top: 1rem; /* Ajusta el margen para que el contenido no quede detrás del formulario fijo */
+            }
+            .filter-button {
+                @apply px-6 py-3 rounded-lg font-semibold shadow-md transition-all duration-200 ease-in-out transform hover:scale-105;
+            }
+            .filter-button.active {
+                @apply ring-2 ring-offset-2 ring-blue-500;
+            }
+            .team-filter-btn {
+                @apply flex items-center justify-center p-2 rounded-full w-10 h-10;
+            }
+            .group-form-field {
+                display: none;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-100 min-h-screen p-4 flex flex-col items-center">
+        <div class="max-w-7xl w-full mx-auto">
+            <!-- Contenedor fijo para el título y el formulario -->
+            <div class="fixed-form-container bg-white shadow-xl rounded-lg p-6">
+                <p class="text-sm text-center text-gray-500 mb-4 user-id-text">
+                    Tu ID de usuario es: <span id="user-id"></span>
+                </p>
+
+                <!-- Botones de filtro de equipo -->
+                <div class="mb-6 flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4 justify-center">
+                    <button id="filter-all" class="filter-button bg-gray-200 hover:bg-gray-300 text-gray-800 active" data-filter-type="all">TODO</button>
+                    <button id="filter-a" class="filter-button bg-purple-200 text-purple-800" data-filter-type="A">ADMINISTRATIVO</button>
+                    <button id="filter-r" class="filter-button bg-blue-200 text-blue-800" data-filter-type="R">REMODEL</button>
+                    <button id="filter-n" class="filter-button bg-yellow-200 text-yellow-800" data-filter-type="N">NUEVO</button>
+                    <button id="filter-e" class="filter-button bg-green-200 text-green-800" data-filter-type="E">ESPECIALIDAD</button>
+                </div>
+
+                <!-- Formulario para agregar/editar integrantes -->
+                <form id="add-member-form" class="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Agregar Nuevo Integrante</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label for="equipo" class="block text-sm font-medium text-gray-700">Equipo</label>
+                            <input type="text" id="equipo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" required>
+                        </div>
+                        <div>
+                            <label for="integrante" class="block text-sm font-medium text-gray-700">Integrante</label>
+                            <input type="text" id="integrante" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="obligaciones" class="block text-sm font-medium text-gray-700">Obligaciones o Tareas</label>
+                            <textarea id="obligaciones" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" required rows="4"></textarea>
+                        </div>
+                        <div id="grupo-field-container" class="group-form-field">
+                            <label for="grupo-select" class="block text-sm font-medium text-gray-700">Grupo Personalizado</label>
+                            <select id="grupo-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                <option value="">Ninguno</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="recurring-frequency" class="block text-sm font-medium text-gray-700">Frecuencia</label>
+                            <select id="recurring-frequency" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                <option value="">Seleccionar</option>
+                                <option value="Diario">Diario de Lunes a viernes</option>
+                                <option value="Lunes, Miércoles y Viernes">Lunes, Miércoles y Viernes</option>
+                                <option value="Semanal">1 vez por semana</option>
+                                <option value="Quincenal">1 vez cada 2 semanas</option>
+                                <option value="Mensual">1 vez al mes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="recurring-time" class="block text-sm font-medium text-gray-700">Hora</label>
+                            <div class="flex space-x-2 mt-1">
+                                <select id="recurring-time-hour" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                    <option value="">Hora</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                </select>
+                                <select id="recurring-time-ampm" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="recurring-description" class="block text-sm font-medium text-gray-700">Descripción Recurrente</label>
+                            <textarea id="recurring-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button type="submit" id="form-submit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition-colors duration-200">
+                            Agregar Integrante
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Contenedor principal para la tabla -->
+            <div class="main-container bg-white shadow-xl rounded-lg p-6">
+                <div class="mb-6 flex space-x-4">
+                    <input type="text" id="search-input" placeholder="Buscar por equipo, integrante u obligación..." class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                    <button id="reload-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-full shadow-md transition-colors duration-200">
+                        Recargar
+                    </button>
+                </div>
+                <!-- Tabla dinámica -->
+                <div class="table-container shadow-md">
+                    <table class="w-full text-sm text-gray-700">
+                        <thead class="text-xs text-gray-700 uppercase">
+                            <tr>
+                                <th>Equipo</th>
+                                <th>Integrante</th>
+                                <th>Obligaciones o Tareas</th>
+                                <th>Send Recurring</th>
+                                <th>Grupo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="member-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal personalizado para confirmación -->
+        <div id="confirm-modal" class="modal">
+            <div class="modal-content">
+                <p id="modal-message" class="text-lg font-semibold mb-4"></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="modal-confirm-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200">Confirmar</button>
+                    <button id="modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full transition-colors duration-200">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const initialTeamData = [
+                { id: '1', equipo: 'Accounting', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '2', equipo: 'Ad', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '3', equipo: 'Adb', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '4', equipo: 'Aerial', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '5', equipo: 'Affidavit', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '6', equipo: 'Affiniti', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '7', equipo: 'Agiliza', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '8', equipo: 'Aluminum', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '9', equipo: 'Ames', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '10', equipo: 'Ar', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '11', equipo: 'ArkDesign', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '12', equipo: 'Asante', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '13', equipo: 'AsbacherStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '14', equipo: 'Aurea', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '15', equipo: 'Barn', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '16', equipo: 'Barron', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '17', equipo: 'Base', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '18', equipo: 'Bd', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '19', equipo: 'Be', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '20', equipo: 'Bids', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '21', equipo: 'Borrero', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '22', equipo: 'Bounahra', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '23', equipo: 'Brenner', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '24', equipo: 'Brewer', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '25', equipo: 'Bta', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '26', equipo: 'Cantilever', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '27', equipo: 'Carbonell', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '28', equipo: 'Checklist', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '29', equipo: 'ClayStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '30', equipo: 'ClintLarkan', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '31', equipo: 'Colestock', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '32', equipo: 'Collections', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '33', equipo: 'ConcreteMix', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '34', equipo: 'Containers', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '35', equipo: 'Control', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '36', equipo: 'Cooper', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '37', equipo: 'CorreccionTc', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '38', equipo: 'Cosentino', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '39', equipo: 'CronkDuch', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '40', equipo: 'D3', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '41', equipo: 'Dac', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '42', equipo: 'Db', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '43', equipo: 'Deadline', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '44', equipo: 'Desactiva', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '45', equipo: 'Docks', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '46', equipo: 'Ductos', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '47', equipo: 'Economía', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '48', equipo: 'Equipos', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '49', equipo: 'Espinas', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '50', equipo: 'Etabs', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '51', equipo: 'Fbc', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '52', equipo: 'Fema', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '53', equipo: 'Filigree', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '54', equipo: 'Finaliza', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '55', equipo: 'GabrielLopezStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '56', equipo: 'GarantiaDeInicio', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '57', equipo: 'GeneracionTopeyPeralte', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '58', equipo: 'Gfd', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '59', equipo: 'H2', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '60', equipo: 'Hambro', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '61', equipo: 'Hardscape', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '62', equipo: 'HollowCore', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '63', equipo: 'Hsf', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '64', equipo: 'HumanResources', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '65', equipo: 'Hx', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '66', equipo: 'Icon', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '67', equipo: 'Idea', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '68', equipo: 'Imara', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '69', equipo: 'IndianRiver', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '70', equipo: 'Ingenieros', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '71', equipo: 'Insite', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '72', equipo: 'Inspections', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '73', equipo: 'Intelae', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '74', equipo: 'Jackhawk', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '75', equipo: 'Joist', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '76', equipo: 'JpStructural', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '77', equipo: 'Jsr', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '78', equipo: 'Jvd', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '79', equipo: 'Kaller', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '80', equipo: 'Kanthan', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '81', equipo: 'Kap', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '82', equipo: 'Koda', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '83', equipo: 'Lang', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '84', equipo: 'Manejo', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '85', equipo: 'Marcore', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '86', equipo: 'Marcas', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '87', equipo: 'Markups', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '88', equipo: 'MarlaStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '89', equipo: 'MartinCounty', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '90', equipo: 'Matelier', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '91', equipo: 'MauriceStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '92', equipo: 'Mdesign', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '93', equipo: 'MeetingReunion', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '94', equipo: 'Midris', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '95', equipo: 'Miklos', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '96', equipo: 'Mjd', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '97', equipo: 'Mnl', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '98', equipo: 'Monaco', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '99', equipo: 'Mpa', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '100', equipo: 'Multiworks', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '101', equipo: 'Mummaw', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '102', equipo: 'MummawArchitecturalTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '103', equipo: 'Municipal', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '104', equipo: 'Narvaez', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '105', equipo: 'NealArchitectural', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '106', equipo: 'NealStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '107', equipo: 'NewHouse', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '108', equipo: 'NewResidence', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '109', equipo: 'NewResidenceBroward', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '110', equipo: 'NewResidenceDade', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '111', equipo: 'NewResidencePalmBeach', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '112', equipo: 'Nr', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '113', equipo: 'Pc', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '114', equipo: 'Pdds', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '115', equipo: 'Pdf', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '116', equipo: 'Permiso', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '117', equipo: 'Phone', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '118', equipo: 'Pile', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '119', equipo: 'PlantasCad', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '120', equipo: 'Plus', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '121', equipo: 'PolesandFences', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 122, equipo: 'PrecastJoist', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 123, equipo: 'Preprocesamiento', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 124, equipo: 'Presiones', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 125, equipo: 'Print', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 126, equipo: 'Procore', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 127, equipo: 'Radakovich', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 128, equipo: 'RamaDeCrecimiento', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 129, equipo: 'Raw', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 130, equipo: 'Rebar', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 131, equipo: 'Remodel', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 132, equipo: 'Remodel Broward', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 133, equipo: 'Remodel Dade', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 134, equipo: 'RemodelPalmBeach', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 135, equipo: 'Repeat', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 136, equipo: 'ReporteDeSuelo', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 137, equipo: 'Restoration', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 138, equipo: 'Rfi', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 139, equipo: 'Rmethod', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 140, equipo: 'Rna', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 141, equipo: 'RogerPiperStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 142, equipo: 'Roofing', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 143, equipo: 'Rose', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 144, equipo: 'Rr', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 145, equipo: 'Russell.Stofft', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 146, equipo: 'Safe', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 147, equipo: 'SaintLucie', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 148, equipo: 'Salus', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 149, equipo: 'Sax', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 150, equipo: 'Se7en', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 151, equipo: 'Shbrandt', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 152, equipo: 'ShopDrawings', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 153, equipo: 'Shoring', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 154, equipo: 'Sign', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 155, equipo: 'Silberstein', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 156, equipo: 'SilbersteinArchitecturalTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 157, equipo: 'Simja', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 158, equipo: 'Soares', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 159, equipo: 'Soop', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 160, equipo: 'Soporte', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 161, equipo: 'Sscc', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 162, equipo: 'Stair', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 163, equipo: 'Stairs', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 164, equipo: 'Stamm', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 165, equipo: 'Steel', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 166, equipo: 'SteelJoistDeck', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 167, equipo: 'Stofft', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 168, equipo: 'Tag', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 169, equipo: 'TamaraPeacock', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 170, equipo: 'Tbbg', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 171, equipo: 'Tdesign', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 172, equipo: 'Tekla', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 173, equipo: 'TopePeralte', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 174, equipo: 'Traduccion', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 175, equipo: 'TraduccionPdf', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 176, equipo: 'Trellis', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 177, equipo: 'Tsunami', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 178, equipo: 'Tuthill', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 179, equipo: 'Uds', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 180, equipo: 'Umber', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 181, equipo: 'Urbandomus', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 182, equipo: 'Urg', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 183, equipo: 'Vdg', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 184, equipo: 'VickArchitect', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 185, equipo: 'Vinicio', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 186, equipo: 'Warehouse', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 187, equipo: 'Wood', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 188, equipo: 'WoodTruss', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 189, equipo: 'WoodyArchitecturalTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 190, equipo: 'X1', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 191, equipo: 'XavierStructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: 192, equipo: 'Xb', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '193', equipo: 'XfactorDesign', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '194', equipo: 'XstructuralTeam', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '195', equipo: 'Yates', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+                { id: '196', equipo: 'YmArchitecture', integrante: '', obligaciones: '', recurringFrequency: '', recurringTime: '', recurringDescription: '', isEmergency: false, group: '' },
+            ];
+            
+            const dayOrder = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const frequencyOrder = ['Diario de Lunes a viernes', 'Lunes, Miércoles y Viernes', 'Semanal', 'Quincenal', 'Mensual'];
+
+            // Cargar datos desde localStorage o usar los datos iniciales
+            let allTeamData;
+            function loadDataFromLocalStorage() {
+                const storedData = localStorage.getItem('teamData');
+                if (storedData) {
+                    allTeamData = JSON.parse(storedData);
+                } else {
+                    allTeamData = [...initialTeamData];
+                }
+            }
+            
+            // Guardar datos en localStorage
+            function saveDataToLocalStorage() {
+                localStorage.setItem('teamData', JSON.stringify(allTeamData));
+            }
+
+            // Se usa un ID de usuario fijo o aleatorio, ya que no se necesita autenticación.
+            const userId = 'usuario_local_static';
+            document.getElementById('user-id').textContent = userId;
+
+            // Configuración para el modal personalizado
+            const confirmModal = document.getElementById('confirm-modal');
+            const modalMessage = document.getElementById('modal-message');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+            function showCustomConfirm(message, onConfirm) {
+                modalMessage.textContent = message;
+                confirmModal.style.display = 'flex';
+                
+                modalConfirmBtn.onclick = () => {
+                    confirmModal.style.display = 'none';
+                    onConfirm(true);
+                };
+                
+                modalCancelBtn.onclick = () => {
+                    confirmModal.style.display = 'none';
+                    onConfirm(false);
+                };
+            }
+
+            // Función para renderizar la tabla con los datos actuales
+            function renderTable(teamData) {
+                const tableBody = document.getElementById('member-table-body');
+                tableBody.innerHTML = '';
+                
+                // Agrupar datos por equipo
+                const groupedTeams = teamData.reduce((acc, member) => {
+                    const team = member.equipo;
+                    if (!acc[team]) {
+                        acc[team] = { members: [], color: getColorForTeam(member.equipo) };
+                    }
+                    acc[team].members.push(member);
+                    return acc;
+                }, {});
+
+                const sortedTeams = Object.keys(groupedTeams).sort((a, b) => {
+                    const aIsEmergency = groupedTeams[a].members.some(m => m.isEmergency);
+                    const bIsEmergency = groupedTeams[b].members.some(m => m.isEmergency);
+                    if (aIsEmergency && !bIsEmergency) return -1;
+                    if (!aIsEmergency && bIsEmergency) return 1;
+                    return a.localeCompare(b);
+                });
+
+                for (const teamName of sortedTeams) {
+                    const team = groupedTeams[teamName];
+                    const teamRowCount = team.members.length;
+                    
+                    team.members.sort((a,b) => {
+                        if (a.isEmergency && !b.isEmergency) return -1;
+                        if (!a.isEmergency && b.isEmergency) return 1;
+                        const frequencyA = frequencyOrder.indexOf(a.recurringFrequency);
+                        const frequencyB = frequencyOrder.indexOf(b.recurringFrequency);
+                        if (frequencyA !== frequencyB) return frequencyA - frequencyB;
+                        if (a.recurringTime && b.recurringTime) return a.recurringTime.localeCompare(b.recurringTime);
+                        if (a.recurringTime) return -1;
+                        if (b.recurringTime) return 1;
+                        return 0;
+                    });
+
+                    team.members.forEach((member, index) => {
+                        const newRow = document.createElement('tr');
+
+                        // Agregar clase de emergencia si está marcada
+                        if (member.isEmergency) {
+                            newRow.classList.add('emergency');
+                        }
+                        
+                        if (index === 0) {
+                            const teamCell = document.createElement('td');
+                            teamCell.textContent = teamName;
+                            teamCell.rowSpan = teamRowCount;
+                            teamCell.classList.add('font-bold', `text-${team.color}-600`);
+                            newRow.appendChild(teamCell);
+                        }
+                        
+                        const memberCell = document.createElement('td');
+                        memberCell.textContent = member.integrante;
+                        newRow.appendChild(memberCell);
+                        
+                        const obligationsCell = document.createElement('td');
+                        obligationsCell.innerHTML = member.obligaciones.replace(/\n/g, '<br>');
+                        newRow.appendChild(obligationsCell);
+
+                        const recurringCell = document.createElement('td');
+                        if (member.recurringFrequency || member.recurringTime || member.recurringDescription) {
+                            recurringCell.innerHTML = `
+                                ${member.recurringFrequency ? `<b>${member.recurringFrequency}</b>` : ''}
+                                ${member.recurringTime && member.recurringTime !== ':' ? ` <b>${member.recurringTime}</b>` : ''}<br>
+                                ${member.recurringDescription ? member.recurringDescription.replace(/\n/g, '<br>') : ''}
+                            `;
+                        }
+                        newRow.appendChild(recurringCell);
+
+                        const groupCell = document.createElement('td');
+                        groupCell.textContent = member.group;
+                        newRow.appendChild(groupCell);
+                        
+                        // Celda de acciones con botones de editar y eliminar
+                        const actionsCell = document.createElement('td');
+                        actionsCell.classList.add('flex', 'space-x-2');
+                        
+                        const editBtn = document.createElement('button');
+                        editBtn.textContent = 'Editar';
+                        editBtn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800', 'font-bold', 'py-1', 'px-2', 'rounded');
+                        editBtn.onclick = () => editMember(member.id);
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.textContent = 'Eliminar';
+                        deleteBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white', 'font-bold', 'py-1', 'px-2', 'rounded');
+                        deleteBtn.onclick = () => deleteMember(member.id);
+
+                        const emergencyBtn = document.createElement('button');
+                        emergencyBtn.textContent = member.isEmergency ? 'Quitar Prioridad' : 'Prioritario';
+                        emergencyBtn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'text-white', 'font-bold', 'py-1', 'px-2', 'rounded');
+                        emergencyBtn.onclick = () => markAsEmergency(member.id);
+
+                        actionsCell.appendChild(editBtn);
+                        actionsCell.appendChild(deleteBtn);
+                        actionsCell.appendChild(emergencyBtn);
+                        newRow.appendChild(actionsCell);
+
+                        tableBody.appendChild(newRow);
+                    });
+                }
+            }
+            
+            // Función para marcar una tarea como de emergencia/prioritaria
+            function markAsEmergency(id) {
+                const memberIndex = allTeamData.findIndex(member => member.id === id);
+                if (memberIndex !== -1) {
+                    allTeamData[memberIndex].isEmergency = !allTeamData[memberIndex].isEmergency;
+                    allTeamData.sort((a, b) => {
+                        if (a.isEmergency && !b.isEmergency) return -1;
+                        if (!a.isEmergency && b.isEmergency) return 1;
+                        const frequencyA = frequencyOrder.indexOf(a.recurringFrequency);
+                        const frequencyB = frequencyOrder.indexOf(b.recurringFrequency);
+                        if (frequencyA !== frequencyB) return frequencyA - frequencyB;
+                        if (a.recurringTime && b.recurringTime) return a.recurringTime.localeCompare(b.recurringTime);
+                        if (a.recurringTime) return -1;
+                        if (b.recurringTime) return 1;
+                        return a.equipo.localeCompare(b.equipo);
+                    });
+                    filterAndRenderTable();
+                    saveDataToLocalStorage();
+                    console.log("Miembro eliminado.");
+                }
+            }
+            
+            // Función para eliminar un miembro
+            function deleteMember(id) {
+                showCustomConfirm('¿Estás seguro de que quieres eliminar a este miembro?', (confirmed) => {
+                    if (confirmed) {
+                        allTeamData = allTeamData.filter(member => member.id !== id);
+                        filterAndRenderTable();
+                        saveDataToLocalStorage();
+                        console.log("Miembro eliminado.");
+                    }
+                });
+            }
+
+            // Función para filtrar la tabla al escribir en el campo de búsqueda
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                const searchText = e.target.value.toLowerCase();
+                filterState.searchText = searchText;
+                filterAndRenderTable();
+            });
+
+            // Función para asignar un color al equipo
+            function getColorForTeam(teamName) {
+                const colors = {
+                    'accounting': 'indigo', 'ad': 'blue', 'adb': 'green', 'aerial': 'yellow', 'affidavit': 'purple', 'affiniti': 'pink', 'agiliza': 'red', 'aluminum': 'teal', 'ames': 'orange', 'ar': 'gray', 'arkdesign': 'slate', 'asante': 'lime', 'asbacherstructuralteam': 'cyan', 'aurea': 'rose', 'barn': 'fuchsia', 'barron': 'emerald', 'base': 'sky', 'bd': 'blue', 'be': 'green', 'bids': 'yellow', 'borrero': 'purple', 'bounahra': 'pink', 'brenner': 'red', 'brewer': 'teal', 'bta': 'orange', 'cantilever': 'gray', 'carbonell': 'slate', 'checklist': 'lime', 'claystructuralteam': 'cyan', 'clintlarkan': 'rose', 'colestock': 'fuchsia', 'collections': 'emerald', 'concretemix': 'sky', 'containers': 'blue', 'control': 'green', 'cooper': 'yellow', 'correcciontc': 'purple', 'cosentino': 'pink', 'cronkduch': 'red', 'd3': 'teal', 'dac': 'orange', 'db': 'gray', 'deadline': 'slate', 'desactiva': 'lime', 'docks': 'cyan', 'ductos': 'rose', 'economía': 'fuchsia', 'equipos': 'emerald', 'espinas': 'sky', 'etabs': 'blue', 'fbc': 'green', 'fema': 'yellow', 'filigree': 'purple', 'finaliza': 'pink', 'gabriellopezstructuralteam': 'red', 'garantiadeinicio': 'teal', 'generaciontopeyperalte': 'orange', 'gfd': 'gray', 'h2': 'slate', 'hambro': 'lime', 'hardscape': 'cyan', 'hollowcore': 'rose', 'hsf': 'fuchsia', 'humanresources': 'emerald', 'hx': 'sky', 'icon': 'blue', 'idea': 'green', 'imara': 'yellow', 'indianriver': 'purple', 'ingenieros': 'pink', 'insite': 'red', 'inspections': 'teal', 'intelae': 'orange', 'jackhawk': 'gray', 'joist': 'slate', 'jpstructural': 'lime', 'jsr': 'cyan', 'jvd': 'rose', 'kaller': 'fuchsia', 'kanthan': 'emerald', 'kap': 'sky', 'koda': 'blue', 'lang': 'green', 'manejo': 'yellow', 'marcore': 'purple', 'marcas': 'pink', 'markups': 'red', 'marlastructuralteam': 'teal', 'martincounty': 'orange', 'matelier': 'gray', 'mauricestructuralteam': 'slate', 'mdesign': 'lime', 'meetingreunion': 'cyan', 'midris': 'rose', 'miklos': 'fuchsia', 'mjd': 'emerald', 'mnl': 'sky', 'monaco': 'blue', 'mpa': 'green', 'multiworks': 'yellow', 'mummaw': 'purple', 'mummawarchitecturalteam': 'pink', 'municipal': 'red', 'narvaez': 'teal', 'nealarchitectural': 'orange', 'nealstructuralteam': 'gray', 'newhouse': 'slate', 'newresidence': 'lime', 'newresidencebroward': 'cyan', 'newresidencedade': 'rose', 'newresidencepalmbeach': 'fuchsia', 'nr': 'emerald', 'pc': 'sky', 'pdds': 'blue', 'pdf': 'green', 'permiso': 'yellow', 'phone': 'purple', 'pile': 'pink', 'plantascad': 'red', 'plus': 'teal', 'polesandfences': 'orange', 'precastjoist': 'gray', 'preprocesamiento': 'slate', 'presiones': 'lime', 'print': 'cyan', 'procore': 'rose', 'radakovich': 'fuchsia', 'ramadecrecimiento': 'emerald', 'raw': 'sky', 'rebar': 'blue', 'remodel': 'green', 'remodel broward': 'yellow', 'remodel dade': 'purple', 'remodelpalmbeach': 'pink', 'repeat': 'red', 'reportedesuelo': 'teal', 'restoration': 'orange', 'rfi': 'gray', 'rmethod': 'slate', 'rna': 'lime', 'rogerpiperstructuralteam': 'cyan', 'roofing': 'rose', 'rose': 'fuchsia', 'rr': 'emerald', 'russell.stofft': 'sky', 'safe': 'blue', 'saintlucie': 'green', 'salus': 'yellow', 'sax': 'purple', 'se7en': 'pink', 'shbrandt': 'red', 'shopdrawings': 'teal', 'shoring': 'orange', 'sign': 'gray', 'silberstein': 'slate', 'silbersteinarchitecturalteam': 'lime', 'simja': 'cyan', 'soares': 'rose', 'soop': 'fuchsia', 'soporte': 'emerald', 'sscc': 'sky', 'stair': 'blue', 'stairs': 'green', 'stamm': 'yellow', 'steel': 'purple', 'steeljoistdeck': 'pink', 'stofft': 'red', 'tag': 'teal', 'tamarapeacock': 'orange', 'tbbg': 'gray', 'tdesign': 'slate', 'tekla': 'lime', 'topeperalte': 'cyan', 'traduccion': 'rose', 'traduccionpdf': 'fuchsia', 'trellis': 'emerald', 'tsunami': 'sky', 'tuthill': 'blue', 'uds': 'green', 'umber': 'yellow', 'urbandomus': 'purple', 'urg': 'pink', 'vdg': 'red', 'vickarchitect': 'teal', 'vinicio': 'orange', 'warehouse': 'gray', 'wood': 'slate', 'woodtruss': 'lime', 'woodyarchitecturalteam': 'cyan', 'x1': 'rose', 'xavierstructuralteam': 'fuchsia', 'xb': 'emerald', 'xfactordesign': 'sky', 'xstructuralteam': 'blue', 'yates': 'green', 'ymarchitecture': 'yellow',
+                };
+                const lowerCaseTeam = teamName.toLowerCase();
+                return colors[lowerCaseTeam] || 'gray';
+            }
+            
+            // --- Lógica para el sistema de agrupación de equipos ---
+            
+            const adminTeams = ['Manejo', 'Bids', 'Accounting', 'Espinas', 'Collections'];
+            const remodelTeams = ['Remodel', 'Remodel Broward', 'Remodel Dade', 'RemodelPalmBeach'];
+            const specialtyTeams = ['Steel', 'Marcore', 'Hardscape', 'Shoring', 'Stair'];
+            const casaNuevaTeams = ['NewHouse', 'NewResidence', 'NewResidenceBroward', 'NewResidenceDade', 'NewResidencePalmBeach'];
+
+            // Estado centralizado para todos los filtros
+            const filterState = {
+                teamType: 'all',
+                searchText: ''
+            };
+
+            // Función para aplicar todos los filtros y renderizar la tabla
+            function filterAndRenderTable() {
+                let filteredData = [...allTeamData];
+
+                // Filtrar por barra de búsqueda
+                if (filterState.searchText) {
+                    const searchTextLower = filterState.searchText.toLowerCase();
+                    filteredData = filteredData.filter(member =>
+                        member.equipo.toLowerCase().includes(searchTextLower) ||
+                        member.integrante.toLowerCase().includes(searchTextLower) ||
+                        member.obligaciones.toLowerCase().includes(searchTextLower) ||
+                        (member.recurringDescription && member.recurringDescription.toLowerCase().includes(searchTextLower)) ||
+                        (member.group && member.group.toLowerCase().includes(searchTextLower))
+                    );
+                }
+
+                // Aplicar filtro de tipo de equipo (el nuevo filtro)
+                if (filterState.teamType !== 'all') {
+                    if (filterState.teamType === 'A') {
+                        filteredData = filteredData.filter(member => adminTeams.includes(member.equipo));
+                    } else if (filterState.teamType === 'R') {
+                        filteredData = filteredData.filter(member => remodelTeams.includes(member.equipo) || member.equipo.startsWith('Remodel'));
+                    } else if (filterState.teamType === 'N') {
+                        filteredData = filteredData.filter(member => casaNuevaTeams.includes(member.equipo) || member.equipo.startsWith('NewResidence'));
+                    } else if (filterState.teamType === 'E') {
+                        filteredData = filteredData.filter(member => specialtyTeams.includes(member.equipo));
+                    }
+                }
+                renderTable(filteredData);
+            }
+
+            // Manejador del filtro de tipo de equipo
+            document.querySelectorAll('.filter-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    // Eliminar la clase activa de todos los botones
+                    document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+                    
+                    // Agregar la clase activa al botón actual
+                    e.target.classList.add('active');
+                    
+                    // Actualizar el estado del filtro de pestañas
+                    filterState.teamType = e.target.dataset.filterType;
+                    filterAndRenderTable();
+                });
+            });
+
+            // Evento para la barra de búsqueda
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                filterState.searchText = e.target.value;
+                filterAndRenderTable();
+            });
+
+            // Botón para recargar y resetear los datos a los valores iniciales
+            document.getElementById('reload-btn').addEventListener('click', () => {
+                localStorage.removeItem('teamData');
+                loadDataFromLocalStorage();
+                
+                allTeamData.sort((a, b) => {
+                    if (a.isEmergency && !b.isEmergency) return -1;
+                    if (!a.isEmergency && b.isEmergency) return 1;
+                    const frequencyA = frequencyOrder.indexOf(a.recurringFrequency);
+                    const frequencyB = frequencyOrder.indexOf(b.recurringFrequency);
+                    if (frequencyA !== frequencyB) return frequencyA - frequencyB;
+                    if (a.recurringTime && b.recurringTime) return a.recurringTime.localeCompare(b.recurringTime);
+                    if (a.recurringTime) return -1;
+                    if (b.recurringTime) return 1;
+                    return a.equipo.localeCompare(b.equipo);
+                });
+                
+                // Re-renderizar la tabla con todos los datos y resetear los filtros
+                document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('filter-all').classList.add('active');
+                filterState.teamType = 'all';
+                document.getElementById('search-input').value = '';
+                filterState.searchText = '';
+
+                filterAndRenderTable();
+                document.getElementById('add-member-form').reset();
+                const submitBtn = document.getElementById('form-submit-btn');
+                submitBtn.textContent = 'Agregar Integrante';
+                delete submitBtn.dataset.editingId;
+                document.getElementById('grupo-field-container').style.display = 'none';
+            });
+
+            // Lógica para el nuevo campo de grupo con selección y creación
+            const grupoSelect = document.getElementById('grupo-select');
+            const grupoOptions = ['ADMINISTRATIVO', 'REMODEL', 'NUEVO', 'ESPECIALIDAD'];
+
+            // Manejador del formulario para guardar o actualizar en localStorage
+            document.getElementById('add-member-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                const submitBtn = document.getElementById('form-submit-btn');
+                const editingId = submitBtn.dataset.editingId;
+
+                const equipo = document.getElementById('equipo').value.trim();
+                const integrante = document.getElementById('integrante').value.trim();
+                const obligaciones = document.getElementById('obligaciones').value.trim();
+                const recurringFrequency = document.getElementById('recurring-frequency').value.trim();
+                const recurringTimeHour = document.getElementById('recurring-time-hour').value.trim();
+                const recurringTimeAmPm = document.getElementById('recurring-time-ampm').value.trim();
+                const recurringTime = recurringTimeHour ? `${recurringTimeHour}:${recurringTimeAmPm}` : '';
+                const recurringDescription = document.getElementById('recurring-description').value.trim();
+                
+                let group = grupoSelect.value;
+
+                // Validar que al menos un campo tenga valor para editar
+                if (editingId) {
+                    const memberToEdit = allTeamData.find(m => m.id === editingId);
+                    const changes = {
+                        equipo: equipo,
+                        integrante: integrante,
+                        obligaciones: obligaciones,
+                        recurringFrequency: recurringFrequency,
+                        recurringTime: recurringTime,
+                        recurringDescription: recurringDescription,
+                        group: group
+                    };
+
+                    // Comprobar si al menos un campo ha sido modificado y no está vacío
+                    const hasChanges = Object.keys(changes).some(key => {
+                        return changes[key] !== '' && changes[key] !== memberToEdit[key];
+                    });
+
+                    if (!hasChanges) {
+                        // No hay cambios, simplemente cerrar el formulario sin actualizar
+                        document.getElementById('add-member-form').reset();
+                        delete submitBtn.dataset.editingId;
+                        submitBtn.textContent = 'Agregar Integrante';
+                        document.getElementById('grupo-field-container').style.display = 'none';
+                        return;
+                    }
+
+                    // Actualizar solo los campos que no están vacíos
+                    if (equipo) memberToEdit.equipo = equipo;
+                    if (integrante) memberToEdit.integrante = integrante;
+                    if (obligaciones) memberToEdit.obligaciones = obligaciones;
+                    if (recurringFrequency) memberToEdit.recurringFrequency = recurringFrequency;
+                    if (recurringTime) memberToEdit.recurringTime = recurringTime;
+                    if (recurringDescription) memberToEdit.recurringDescription = recurringDescription;
+                    if (group) memberToEdit.group = group;
+
+                    document.getElementById('add-member-form').reset();
+                    delete submitBtn.dataset.editingId;
+                    submitBtn.textContent = 'Agregar Integrante';
+                    document.getElementById('grupo-field-container').style.display = 'none';
+
+                } else {
+                    // Agregar nuevo integrante (lógica original)
+                    const newId = Date.now().toString();
+                    allTeamData.push({
+                        id: newId,
+                        equipo: equipo,
+                        integrante: integrante,
+                        obligaciones: obligaciones,
+                        recurringFrequency: recurringFrequency,
+                        recurringTime: recurringTime,
+                        recurringDescription: recurringDescription,
+                        isEmergency: false,
+                        group: group
+                    });
+                }
+                
+                allTeamData.sort((a, b) => {
+                    if (a.isEmergency && !b.isEmergency) return -1;
+                    if (!a.isEmergency && b.isEmergency) return 1;
+                    const frequencyA = frequencyOrder.indexOf(a.recurringFrequency);
+                    const frequencyB = frequencyOrder.indexOf(b.recurringFrequency);
+                    if (frequencyA !== frequencyB) return frequencyA - frequencyB;
+                    if (a.recurringTime && b.recurringTime) return a.recurringTime.localeCompare(b.recurringTime);
+                    if (a.recurringTime) return -1;
+                    if (b.recurringTime) return 1;
+                    return a.equipo.localeCompare(b.equipo);
+                });
+                filterAndRenderTable();
+                saveDataToLocalStorage();
+            });
+
+            // Función para editar un miembro (rellena el formulario y cambia el botón)
+            function editMember(id) {
+                const memberToEdit = allTeamData.find(member => member.id === id);
+                if (memberToEdit) {
+                    // Limpiar el formulario antes de rellenarlo para la edición
+                    document.getElementById('add-member-form').reset();
+
+                    document.getElementById('equipo').value = memberToEdit.equipo;
+                    document.getElementById('integrante').value = memberToEdit.integrante;
+                    document.getElementById('obligaciones').value = memberToEdit.obligaciones;
+                    document.getElementById('recurring-frequency').value = memberToEdit.recurringFrequency;
+                    const [hour, ampm] = memberToEdit.recurringTime.split(':');
+                    document.getElementById('recurring-time-hour').value = hour;
+                    document.getElementById('recurring-time-ampm').value = ampm;
+                    document.getElementById('recurring-description').value = memberToEdit.recurringDescription;
+
+                    // Lógica para poblar el dropdown de grupos con las 4 opciones fijas
+                    grupoSelect.innerHTML = `<option value="">Ninguno</option>`;
+                    grupoOptions.forEach(groupName => {
+                        const option = document.createElement('option');
+                        option.value = groupName;
+                        option.textContent = groupName;
+                        grupoSelect.appendChild(option);
+                    });
+                    grupoSelect.value = memberToEdit.group;
+                    
+                    document.getElementById('grupo-field-container').style.display = 'block';
+                    
+                    const submitBtn = document.getElementById('form-submit-btn');
+                    submitBtn.textContent = 'Actualizar Integrante';
+                    submitBtn.dataset.editingId = id;
+                }
+            }
+
+            // Asignar funciones a la ventana global
+            window.editMember = editMember;
+            window.deleteMember = deleteMember;
+            window.markAsEmergency = markAsEmergency;
+            
+            // Iniciar la aplicación: cargar los datos y renderizar la tabla
+            loadDataFromLocalStorage();
+
+            allTeamData.sort((a, b) => {
+                if (a.isEmergency && !b.isEmergency) return -1;
+                if (!a.isEmergency && b.isEmergency) return 1;
+                const frequencyA = frequencyOrder.indexOf(a.recurringFrequency);
+                const frequencyB = frequencyOrder.indexOf(b.recurringFrequency);
+                if (frequencyA !== frequencyB) return frequencyA - frequencyB;
+                if (a.recurringTime && b.recurringTime) return a.recurringTime.localeCompare(b.recurringTime);
+                if (a.recurringTime) return -1;
+                if (b.recurringTime) return 1;
+                return a.equipo.localeCompare(b.equipo);
+            });
+            filterAndRenderTable();
+        </script>
+    </body>
+    </html>
